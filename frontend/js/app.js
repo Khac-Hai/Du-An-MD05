@@ -259,13 +259,18 @@ function updateProductStockUI(productId, newStock) {
     const initialStock = 10;
     const stockEl = document.getElementById('hero-stock-count');
     const barEl = document.getElementById('hero-stock-bar');
-    const statRemaining = document.getElementById('stat-remaining-stock');
 
     if (stockEl) stockEl.innerText = `${stockVal} / ${initialStock} cái`;
     if (barEl) {
       const percent = Math.max(0, Math.min(100, (stockVal / initialStock) * 100));
       barEl.style.width = `${percent}%`;
     }
+  }
+
+  // 5. Đồng bộ ô số liệu "Tồn Kho Còn Lại Trong DB" nếu đây là sản phẩm đang được chọn test benchmark
+  const currentBenchmarkId = state.benchmarkProductId || 1;
+  if (productId === currentBenchmarkId) {
+    const statRemaining = document.getElementById('stat-remaining-stock');
     if (statRemaining) statRemaining.innerText = stockVal;
   }
 }
@@ -403,14 +408,36 @@ function populateBenchmarkProductSelect() {
   updateBenchmarkProductDetails(currentVal);
 }
 
-function handleBenchmarkProductChange(productIdStr) {
+async function handleBenchmarkProductChange(productIdStr) {
   const productId = parseInt(productIdStr, 10) || 1;
   state.benchmarkProductId = productId;
+
+  // Reset ket qua kiem thu cu de chuan bi cho luot test san pham moi
+  const statSuccess = document.getElementById('stat-successful-orders');
+  if (statSuccess) statSuccess.innerText = '0';
+  const statReject = document.getElementById('stat-rejected-orders');
+  if (statReject) statReject.innerText = '0';
+  const statOversold = document.getElementById('stat-oversold-count');
+  if (statOversold) statOversold.innerText = '0';
+
+  // Lay ngay ton kho that moi nhat tu DB qua Order Service
+  try {
+    const res = await fetch(`${API_BASE}/orders/inventory/${productId}`);
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.availableStock !== undefined) {
+        const p = state.products.find(x => x.id === productId);
+        if (p) p.stock = json.availableStock;
+      }
+    }
+  } catch (_) {}
+
   updateBenchmarkProductDetails(productId);
-  appendConsoleLog(`[CHỌN SẢN PHẨM] Đã chọn Sản phẩm #${productId} để kiểm thử tải.`, 'info');
+  const p = state.products.find(x => x.id === productId);
+  appendConsoleLog(`[CHỌN SẢN PHẨM] Đã chọn Sản phẩm #${productId} (${p ? p.name : ''}). Tồn kho hiện tại: ${p?.stock ?? 0} cái.`, 'info');
 }
 
-function selectRandomBenchmarkProduct() {
+async function selectRandomBenchmarkProduct() {
   if (!state.products || state.products.length === 0) {
     showToast('Danh sách sản phẩm chưa tải xong, vui lòng đợi!', 'warn');
     return;
@@ -423,6 +450,26 @@ function selectRandomBenchmarkProduct() {
   if (select) {
     select.value = randomProduct.id;
   }
+
+  // Reset ket qua kiem thu cu
+  const statSuccess = document.getElementById('stat-successful-orders');
+  if (statSuccess) statSuccess.innerText = '0';
+  const statReject = document.getElementById('stat-rejected-orders');
+  if (statReject) statReject.innerText = '0';
+  const statOversold = document.getElementById('stat-oversold-count');
+  if (statOversold) statOversold.innerText = '0';
+
+  // Lay ngay ton kho that tu DB cho san pham nay
+  try {
+    const res = await fetch(`${API_BASE}/orders/inventory/${randomProduct.id}`);
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.availableStock !== undefined) {
+        randomProduct.stock = json.availableStock;
+      }
+    }
+  } catch (_) {}
+
   updateBenchmarkProductDetails(randomProduct.id);
   appendConsoleLog(`🎲 [CHỌN NGẪU NHIÊN] Đã chọn: #${randomProduct.id} - ${randomProduct.name} (Tồn kho: ${randomProduct.stock ?? 0} cái)`, 'warn');
   showToast(`🎲 Đã chọn ngẫu nhiên: #${randomProduct.id} - ${randomProduct.name}`, 'info');
@@ -432,11 +479,12 @@ function updateBenchmarkProductDetails(productId) {
   const product = state.products.find(p => p.id === productId) || state.products[0];
   if (!product) return;
 
+  const stockVal = product.stock !== undefined ? product.stock : 0;
+
   // 1. Cập nhật thẻ preview chi tiết phía dưới dropdown
   const preview = document.getElementById('benchmark-selected-product-info');
   if (preview) {
     const priceStr = formatCurrency(product.flashSale && product.flashSalePrice ? product.flashSalePrice : product.price);
-    const stockVal = product.stock !== undefined ? product.stock : 0;
     preview.innerHTML = `
       <span>Tồn kho hiện tại: <strong style="color: ${stockVal <= 0 ? 'var(--danger)' : '#10b981'};">${stockVal} cái</strong></span>
       <span>Giá test: <strong style="color: #6366f1;">${priceStr}</strong></span>
@@ -456,10 +504,18 @@ function updateBenchmarkProductDetails(productId) {
     lockHint.innerHTML = `🛡️ <strong>Cơ chế bảo vệ:</strong> Mỗi request gửi đến Order Service sẽ cố gắng acquire <code>SETNX lock:inventory:${productId} [UUID] PX 5000</code>. Chỉ có thread giữ Lock mới được trừ tồn kho trong DB bằng <code>SELECT ... FOR UPDATE</code>.`;
   }
 
-  // 4. Cập nhật thẻ số liệu "Tồn Kho DB Còn Lại" hiển thị kho của sản phẩm đang chọn
+  // 4. Cập nhật thẻ số liệu "Tồn Kho DB Còn Lại" & tiêu đề kết quả kiểm thử theo đúng sản phẩm đang chọn
   const statRemaining = document.getElementById('stat-remaining-stock');
-  if (statRemaining && product.stock !== undefined) {
-    statRemaining.innerText = product.stock;
+  if (statRemaining) {
+    statRemaining.innerText = stockVal;
+  }
+  const statRemainingTitle = document.getElementById('stat-remaining-title');
+  if (statRemainingTitle) {
+    statRemainingTitle.innerText = `Tồn kho #${productId} còn lại trong DB`;
+  }
+  const statSuccessTitle = document.getElementById('stat-successful-title');
+  if (statSuccessTitle) {
+    statSuccessTitle.innerText = `Đơn hàng thành công (Tồn kho: ${stockVal})`;
   }
 }
 
