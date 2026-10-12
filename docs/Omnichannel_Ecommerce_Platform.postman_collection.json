@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "a82b4519-74d2-4e90-8d5f-9e1234567890",
-    "name": "NEXUS Omnichannel E-Commerce Platform - Full Test Suite",
-    "description": "Bộ sưu tập Postman Collection hoàn chỉnh cho toàn bộ hệ thống Microservices Thương Mại Điện Tử Đa Kênh (NEXUS COMMERCE).\n\nBao gồm 7 Module kiểm thử toàn diện:\n1. Authentication & RBAC (Đăng ký, Đăng nhập Admin / Customer A / Customer B, Token Validation)\n2. Product Catalog (Public API, Lọc danh mục, Flash Sale, Tìm kiếm, Admin CRUD)\n3. Order & Inventory Management (Tồn kho thực tế, Khóa phân tán Redis Lock, Chống giả mạo giá & ID, Quản trị kho)\n4. Concurrency & Race Condition Benchmark (Reset kho, Bắn tải đồng thời, Báo cáo âm kho)\n5. Payment & Saga Distributed Transactions (Saga Choreography, Bồi hoàn khi FAIL, Chống thanh toán lại Idempotency, Bảo vệ quyền sở hữu User A / User B)\n6. Notification Service (Nhận sự kiện qua RabbitMQ Topic Exchange)\n7. Health Checks Matrix (Kiểm tra trạng thái hoạt động của 6 Microservices)",
+    "name": "NOVA Omnichannel E-Commerce Platform - Full Test Suite",
+    "description": "Bộ sưu tập Postman Collection hoàn chỉnh cho toàn bộ hệ thống Microservices Thương Mại Điện Tử Đa Kênh (NOVA COMMERCE).\n\nBao gồm 7 Module kiểm thử toàn diện:\n1. Authentication & RBAC (Đăng ký, Đăng nhập Admin / Customer A / Customer B, Token Validation)\n2. Product Catalog (Public API, Lọc danh mục, Flash Sale, Tìm kiếm, Admin CRUD)\n3. Order & Inventory Management (Tồn kho thực tế, Khóa phân tán Redis Lock, Chống giả mạo giá & ID, Quản trị kho)\n4. Concurrency & Race Condition Benchmark (Reset kho, Bắn tải đồng thời, Báo cáo âm kho)\n5. Payment & Saga Distributed Transactions (Saga Choreography, Bồi hoàn khi FAIL, Chống thanh toán lại Idempotency, Bảo vệ quyền sở hữu User A / User B)\n6. Notification Service (Nhận sự kiện qua RabbitMQ Topic Exchange)\n7. Health Checks Matrix (Kiểm tra trạng thái hoạt động của 6 Microservices)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [

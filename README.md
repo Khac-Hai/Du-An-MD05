@@ -1,4 +1,4 @@
-# ⚡ NEXUS COMMERCE - OMNICHANNEL E-COMMERCE MICROSERVICES PLATFORM
+# ⚡ NOVA COMMERCE - OMNICHANNEL E-COMMERCE MICROSERVICES PLATFORM
 
 > **Đề tài tốt nghiệp / cuối kỳ:** Hệ thống Thương mại Điện tử Đa kênh chuẩn Doanh nghiệp theo kiến trúc Microservices với Redis Distributed Lock chống Race Condition và Saga Pattern RabbitMQ.
 

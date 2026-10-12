@@ -1,8 +1,8 @@
-﻿[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 # scripts/test-flash-sale.ps1
 # Script PowerShell kiểm thử tải đồng thời sự kiện Flash Sale trên Windows
 Write-Host "===========================================================" -ForegroundColor Cyan
-Write-Host "  NEXUS COMMERCE - KIỂM THỬ TẢI ĐỒNG THỜI FLASH SALE  " -ForegroundColor Yellow
+Write-Host "  NOVA COMMERCE - KIỂM THỬ TẢI ĐỒNG THỜI FLASH SALE  " -ForegroundColor Yellow
 Write-Host "===========================================================" -ForegroundColor Cyan
 
 $gatewayUrl = "http://localhost:8080/api/v1"

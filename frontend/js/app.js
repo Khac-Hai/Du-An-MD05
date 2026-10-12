@@ -1,5 +1,5 @@
 /**
- * NEXUS COMMERCE - Omnichannel Microservices Frontend Application
+ * NOVA COMMERCE - Omnichannel Microservices Frontend Application
  * Handles Storefront, Concurrency Benchmark, Saga Interactions, and Service Monitoring
  */
 

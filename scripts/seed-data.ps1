@@ -1,4 +1,4 @@
-﻿[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 # scripts/seed-data.ps1
 # Script tự động khởi tạo dữ liệu mẫu cho Hệ thống Thương mại Điện tử Đa kênh
 # Tạo 10 tài khoản người dùng thực tế và 14 sản phẩm, đồng bộ tồn kho giữa PostgreSQL và Redis
@@ -7,7 +7,7 @@ $ErrorActionPreference = "Continue"
 $gatewayUrl = "http://localhost:8080/api/v1"
 
 Write-Host "`n===========================================================" -ForegroundColor Cyan
-Write-Host "  NEXUS COMMERCE - KHỞI TẠO DỮ LIỆU (NGƯỜI DÙNG & SẢN PHẨM)  " -ForegroundColor Cyan
+Write-Host "  NOVA COMMERCE - KHỞI TẠO DỮ LIỆU (NGƯỜI DÙNG & SẢN PHẨM)  " -ForegroundColor Cyan
 Write-Host "===========================================================`n" -ForegroundColor Cyan
 
 # 1. Đọc dữ liệu từ file JSON
