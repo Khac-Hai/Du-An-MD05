@@ -385,11 +385,12 @@ function populateBenchmarkProductSelect() {
   if (!select) return;
 
   if (!state.products || state.products.length === 0) {
-    select.innerHTML = '<option value="1">Đang tải danh sách sản phẩm...</option>';
+    // Nếu chưa có dữ liệu sản phẩm, gọi fetchProducts và không xóa danh sách mặc định sẵn có trong HTML
+    fetchProducts();
     return;
   }
 
-  const currentVal = state.benchmarkProductId || 1;
+  const currentVal = state.benchmarkProductId || parseInt(select.value, 10) || 1;
 
   select.innerHTML = state.products.map(p => {
     const priceFormatted = formatCurrency(p.flashSale && p.flashSalePrice ? p.flashSalePrice : p.price);
@@ -398,6 +399,7 @@ function populateBenchmarkProductSelect() {
     return `<option value="${p.id}" ${isSelected}>#${p.id} - ${p.name} (Tồn kho: ${stockDisplay} cái | ${priceFormatted})</option>`;
   }).join('');
 
+  select.value = currentVal;
   updateBenchmarkProductDetails(currentVal);
 }
 

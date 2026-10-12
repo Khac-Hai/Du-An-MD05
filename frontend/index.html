@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NOVA COMMERCE | Omnichannel Microservices Platform</title>
   <meta name="description" content="Hệ thống Thương mại Điện tử Đa kênh chuẩn Doanh nghiệp theo kiến trúc Microservices với Redis Distributed Lock chống Race Condition và Saga Pattern RabbitMQ.">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=20261013_3">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
 </head>
 <body>
@@ -153,14 +153,29 @@
                   🎲 Chọn Ngẫu Nhiên
                 </button>
               </div>
-              <div class="custom-select-wrap">
-                <select id="benchmark-product-select" class="custom-select" onchange="handleBenchmarkProductChange(this.value)">
-                  <option value="1">Đang tải danh sách sản phẩm sàn...</option>
+              <div class="custom-select-wrap" style="position: relative; width: 100%;">
+                <select id="benchmark-product-select" class="custom-select" style="width: 100%; background: #0f172a; color: #f8fafc; border: 1px solid rgba(255,255,255,0.18); border-radius: 8px; padding: 0.8rem 2.8rem 0.8rem 1rem; font-size: 0.92rem; font-weight: 600; cursor: pointer; outline: none; -webkit-appearance: none; appearance: none;" onchange="handleBenchmarkProductChange(this.value)">
+                  <option value="1" selected>#1 - iPhone 16 Pro Max 256GB Desert Titanium (Flash Sale | 19.990.000₫)</option>
+                  <option value="2">#2 - Samsung Galaxy S24 Ultra 512GB Titanium Gray (31.990.000₫)</option>
+                  <option value="3">#3 - MacBook Pro 14 M3 Pro 18GB/512GB Space Black (49.990.000₫)</option>
+                  <option value="4">#4 - Sony WH-1000XM5 Chống Ồn Đầu Bảng (7.990.000₫)</option>
+                  <option value="5">#5 - Apple Watch Ultra 2 GPS + Cellular 49mm (21.990.000₫)</option>
+                  <option value="6">#6 - iPad Pro M4 11 inch 256GB Wi-Fi Space Black (27.990.000₫)</option>
+                  <option value="7">#7 - Bàn Phím Cơ Keychron Q1 Pro QMK/VIA Carbon (4.690.000₫)</option>
+                  <option value="8">#8 - Chuột Công Thái Học Logitech MX Master 3S (2.390.000₫)</option>
+                  <option value="9">#9 - Loa Di Động Marshall Stanmore III Bluetooth (9.490.000₫)</option>
+                  <option value="10">#10 - Tai Nghe Apple AirPods Pro 2 USB-C MagSafe (5.490.000₫)</option>
+                  <option value="11">#11 - Laptop Gaming Asus ROG Zephyrus G16 OLED (58.990.000₫)</option>
+                  <option value="12">#12 - Màn Hình Dell UltraSharp 27 4K U2723QE (14.290.000₫)</option>
+                  <option value="13">#13 - Xiaomi 14 Ultra 512GB Leica Photography (29.990.000₫)</option>
+                  <option value="14">#14 - Tay Cầm Không Dây Sony DualSense Edge PS5 (4.990.000₫)</option>
                 </select>
-                <span class="custom-select-arrow">▼</span>
+                <span class="custom-select-arrow" style="position: absolute; right: 1.1rem; top: 50%; transform: translateY(-50%); pointer-events: none; color: #818cf8; font-size: 0.85rem;">▼</span>
               </div>
-              <div id="benchmark-selected-product-info" class="benchmark-product-preview">
-                <!-- Hiển thị động: Tồn kho thực tế, Giá test, Mã SKU -->
+              <div id="benchmark-selected-product-info" class="benchmark-product-preview" style="margin-top: 0.5rem; padding: 0.6rem 0.9rem; background: rgba(0, 0, 0, 0.25); border-radius: 6px; border: 1px dashed rgba(255, 255, 255, 0.15); font-size: 0.82rem; color: #94a3b8; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                <span>Tồn kho hiện tại: <strong style="color: #10b981;">10 cái</strong></span>
+                <span>Giá test: <strong style="color: #6366f1;">19.990.000₫</strong></span>
+                <span>Mã SKU: <code>IPHONE-16-PM-256</code></span>
               </div>
             </div>
 
@@ -431,6 +446,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=20261013_3"></script>
 </body>
 </html>

@@ -828,37 +828,41 @@ body {
 }
 
 .custom-select {
-  width: 100%;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background: rgba(15, 23, 42, 0.85);
-  border: 1px solid var(--border-subtle);
-  color: #fff;
-  padding: 0.85rem 2.8rem 0.85rem 1rem;
-  border-radius: var(--radius-sm);
-  font-family: var(--font-body);
-  font-size: 0.92rem;
-  font-weight: 600;
-  cursor: pointer;
-  outline: none;
+  width: 100% !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  background: #0f172a !important;
+  border: 1px solid var(--border-subtle) !important;
+  color: #fff !important;
+  padding: 0.85rem 2.8rem 0.85rem 1rem !important;
+  border-radius: var(--radius-sm) !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.92rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  outline: none !important;
   transition: var(--transition-fast);
 }
 
+.custom-select::-ms-expand {
+  display: none !important;
+}
+
 .custom-select:hover {
-  border-color: rgba(99, 102, 241, 0.5);
-  background: rgba(15, 23, 42, 0.95);
+  border-color: rgba(99, 102, 241, 0.5) !important;
+  background: #1e293b !important;
 }
 
 .custom-select:focus {
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 12px rgba(99, 102, 241, 0.35);
+  border-color: var(--accent-primary) !important;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.35) !important;
 }
 
 .custom-select option {
-  background: #0f172a;
-  color: #f1f5f9;
-  padding: 0.75rem;
+  background: #0f172a !important;
+  color: #f1f5f9 !important;
+  padding: 0.75rem !important;
 }
 
 .custom-select-arrow {
