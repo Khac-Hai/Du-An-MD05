@@ -140,16 +140,27 @@
         <div class="glass-panel">
           <div class="panel-header">
             <h3 class="panel-title">⚙️ Cấu Hình Mô Phỏng Đặt Hàng</h3>
-            <button class="btn btn-secondary btn-sm" onclick="resetInventoryStock()">
+            <button class="btn btn-secondary btn-sm" id="btn-reset-benchmark-stock" onclick="resetInventoryStock()">
               🔄 Reset Kho về 10 Cái
             </button>
           </div>
 
           <div class="concurrency-controls">
             <div class="control-group">
-              <label class="control-label">Sản phẩm kiểm thử:</label>
-              <div style="background: rgba(0,0,0,0.3); padding: 0.75rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); font-size: 0.88rem;">
-                <strong>#1 - iPhone 16 Pro Max 256GB Titanium</strong> (Giá Flash Sale: 19.990.000₫)
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                <label class="control-label" for="benchmark-product-select">Sản phẩm kiểm thử:</label>
+                <button type="button" class="btn btn-secondary btn-xs" onclick="selectRandomBenchmarkProduct()" title="Chọn ngẫu nhiên một sản phẩm bất kỳ trên sàn để kiểm thử">
+                  🎲 Chọn Ngẫu Nhiên
+                </button>
+              </div>
+              <div class="custom-select-wrap">
+                <select id="benchmark-product-select" class="custom-select" onchange="handleBenchmarkProductChange(this.value)">
+                  <option value="1">Đang tải danh sách sản phẩm sàn...</option>
+                </select>
+                <span class="custom-select-arrow">▼</span>
+              </div>
+              <div id="benchmark-selected-product-info" class="benchmark-product-preview">
+                <!-- Hiển thị động: Tồn kho thực tế, Giá test, Mã SKU -->
               </div>
             </div>
 
@@ -169,7 +180,7 @@
               </button>
             </div>
 
-            <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-sm); padding: 0.9rem; font-size: 0.82rem; color: #a7f3d0;">
+            <div id="benchmark-lock-hint" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-sm); padding: 0.9rem; font-size: 0.82rem; color: #a7f3d0;">
               🛡️ <strong>Cơ chế bảo vệ:</strong> Mỗi request gửi đến Order Service sẽ cố gắng acquire <code>SETNX lock:inventory:1 [UUID] PX 5000</code>. Chỉ có thread giữ Lock mới được trừ tồn kho trong DB bằng <code>SELECT ... FOR UPDATE</code>.
             </div>
           </div>

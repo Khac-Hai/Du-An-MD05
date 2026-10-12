@@ -19,6 +19,7 @@ let state = {
   },
   jwtToken: localStorage.getItem('nexus_jwt') || '',
   selectedConcurrency: 50,
+  benchmarkProductId: 1,
   heroProduct: null
 };
 
@@ -102,7 +103,10 @@ function switchTab(tabId) {
   // Highlight active link
   const links = document.querySelectorAll('.nav-link');
   if (tabId === 'storefront') links[0]?.classList.add('active');
-  if (tabId === 'concurrency-lab') links[1]?.classList.add('active');
+  if (tabId === 'concurrency-lab') {
+    links[1]?.classList.add('active');
+    populateBenchmarkProductSelect();
+  }
   if (tabId === 'saga-monitor') links[2]?.classList.add('active');
   if (tabId === 'orders-tab') { links[3]?.classList.add('active'); loadOrderHistory(); }
   if (tabId === 'notifications-tab') { links[4]?.classList.add('active'); loadNotifications(); }
@@ -144,6 +148,9 @@ async function fetchProducts() {
 
       // Find hero product #1
       state.heroProduct = state.products.find(p => p.id === 1) || state.products[0];
+      
+      // Populate benchmark product dropdown with all platform products
+      populateBenchmarkProductSelect();
     }
   } catch (err) {
     console.error('Lỗi tải sản phẩm:', err);
@@ -370,23 +377,118 @@ function clearConsoleLog() {
   if (terminal) terminal.innerHTML = '';
 }
 
+// ============================================================================
+// DYNAMIC BENCHMARK PRODUCT SELECTOR & LOGIC
+// ============================================================================
+function populateBenchmarkProductSelect() {
+  const select = document.getElementById('benchmark-product-select');
+  if (!select) return;
+
+  if (!state.products || state.products.length === 0) {
+    select.innerHTML = '<option value="1">Đang tải danh sách sản phẩm...</option>';
+    return;
+  }
+
+  const currentVal = state.benchmarkProductId || 1;
+
+  select.innerHTML = state.products.map(p => {
+    const priceFormatted = formatCurrency(p.flashSale && p.flashSalePrice ? p.flashSalePrice : p.price);
+    const isSelected = p.id === currentVal ? 'selected' : '';
+    const stockDisplay = p.stock !== undefined ? p.stock : 0;
+    return `<option value="${p.id}" ${isSelected}>#${p.id} - ${p.name} (Tồn kho: ${stockDisplay} cái | ${priceFormatted})</option>`;
+  }).join('');
+
+  updateBenchmarkProductDetails(currentVal);
+}
+
+function handleBenchmarkProductChange(productIdStr) {
+  const productId = parseInt(productIdStr, 10) || 1;
+  state.benchmarkProductId = productId;
+  updateBenchmarkProductDetails(productId);
+  appendConsoleLog(`[CHỌN SẢN PHẨM] Đã chọn Sản phẩm #${productId} để kiểm thử tải.`, 'info');
+}
+
+function selectRandomBenchmarkProduct() {
+  if (!state.products || state.products.length === 0) {
+    showToast('Danh sách sản phẩm chưa tải xong, vui lòng đợi!', 'warn');
+    return;
+  }
+  const randomIndex = Math.floor(Math.random() * state.products.length);
+  const randomProduct = state.products[randomIndex];
+
+  state.benchmarkProductId = randomProduct.id;
+  const select = document.getElementById('benchmark-product-select');
+  if (select) {
+    select.value = randomProduct.id;
+  }
+  updateBenchmarkProductDetails(randomProduct.id);
+  appendConsoleLog(`🎲 [CHỌN NGẪU NHIÊN] Đã chọn: #${randomProduct.id} - ${randomProduct.name} (Tồn kho: ${randomProduct.stock ?? 0} cái)`, 'warn');
+  showToast(`🎲 Đã chọn ngẫu nhiên: #${randomProduct.id} - ${randomProduct.name}`, 'info');
+}
+
+function updateBenchmarkProductDetails(productId) {
+  const product = state.products.find(p => p.id === productId) || state.products[0];
+  if (!product) return;
+
+  // 1. Cập nhật thẻ preview chi tiết phía dưới dropdown
+  const preview = document.getElementById('benchmark-selected-product-info');
+  if (preview) {
+    const priceStr = formatCurrency(product.flashSale && product.flashSalePrice ? product.flashSalePrice : product.price);
+    const stockVal = product.stock !== undefined ? product.stock : 0;
+    preview.innerHTML = `
+      <span>Tồn kho hiện tại: <strong style="color: ${stockVal <= 0 ? 'var(--danger)' : '#10b981'};">${stockVal} cái</strong></span>
+      <span>Giá test: <strong style="color: #6366f1;">${priceStr}</strong></span>
+      <span>Mã SKU: <code>${product.sku || 'SKU-' + product.id}</code></span>
+    `;
+  }
+
+  // 2. Cập nhật nút Reset Kho hiển thị ID sản phẩm đang chọn
+  const resetBtn = document.getElementById('btn-reset-benchmark-stock');
+  if (resetBtn) {
+    resetBtn.innerHTML = `🔄 Reset Kho #${productId} về 10 Cái`;
+  }
+
+  // 3. Cập nhật giải thích cơ chế khóa phân tán với ID sản phẩm đang chọn
+  const lockHint = document.getElementById('benchmark-lock-hint');
+  if (lockHint) {
+    lockHint.innerHTML = `🛡️ <strong>Cơ chế bảo vệ:</strong> Mỗi request gửi đến Order Service sẽ cố gắng acquire <code>SETNX lock:inventory:${productId} [UUID] PX 5000</code>. Chỉ có thread giữ Lock mới được trừ tồn kho trong DB bằng <code>SELECT ... FOR UPDATE</code>.`;
+  }
+
+  // 4. Cập nhật thẻ số liệu "Tồn Kho DB Còn Lại" hiển thị kho của sản phẩm đang chọn
+  const statRemaining = document.getElementById('stat-remaining-stock');
+  if (statRemaining && product.stock !== undefined) {
+    statRemaining.innerText = product.stock;
+  }
+}
+
 async function resetInventoryStock() {
+  const productId = state.benchmarkProductId || 1;
+  const product = state.products.find(p => p.id === productId);
+  const productName = product ? product.name : `Sản phẩm #${productId}`;
+
   try {
-    appendConsoleLog('Đang reset tồn kho sản phẩm #1 về 10 cái qua Order Service...', 'warn');
-    const res = await fetch(`${API_BASE}/orders/benchmark/reset-stock?productId=1&stock=10`, {
+    appendConsoleLog(`Đang reset tồn kho sản phẩm #${productId} (${productName}) về 10 cái qua Order Service...`, 'warn');
+    const res = await fetch(`${API_BASE}/orders/benchmark/reset-stock?productId=${productId}&stock=10`, {
       method: 'POST',
       headers: authHeaders()
     });
     const json = await res.json();
     if (json.success) {
-      showToast('Đã reset kho sản phẩm #1 về 10 cái!', 'success');
-      appendConsoleLog('✅ Reset kho hoàn tất! Tồn kho hiện tại: 10.', 'info');
+      showToast(`Đã reset kho sản phẩm #${productId} về 10 cái!`, 'success');
+      appendConsoleLog(`✅ Reset kho #${productId} hoàn tất! Tồn kho hiện tại: 10 cái.`, 'info');
       
       document.getElementById('stat-successful-orders').innerText = '0';
       document.getElementById('stat-rejected-orders').innerText = '0';
       document.getElementById('stat-remaining-stock').innerText = '10';
       document.getElementById('stat-oversold-count').innerText = '0';
+      
+      // Đồng bộ vào state cục bộ và cập nhật lại giao diện
+      if (product) product.stock = 10;
+      updateBenchmarkProductDetails(productId);
+      populateBenchmarkProductSelect();
       refreshAllInventories();
+    } else {
+      showToast('Không thể reset kho: ' + (json.message || 'Lỗi server'), 'error');
     }
   } catch (err) {
     showToast('Lỗi reset tồn kho: ' + err.message, 'error');
@@ -395,10 +497,22 @@ async function resetInventoryStock() {
 
 async function runLiveConcurrencyBenchmark() {
   const count = state.selectedConcurrency;
+  const productId = state.benchmarkProductId || 1;
+  const selectedProduct = state.products.find(p => p.id === productId) || {
+    id: productId,
+    name: 'Sản phẩm kiểm thử #' + productId,
+    sku: 'SKU-' + productId,
+    price: 19990000
+  };
+
+  const testPrice = selectedProduct.flashSale && selectedProduct.flashSalePrice 
+    ? selectedProduct.flashSalePrice 
+    : selectedProduct.price;
+
   const runBtn = document.getElementById('run-benchmark-btn');
   if (runBtn) runBtn.disabled = true;
 
-  appendConsoleLog(`🚀 BẮT ĐẦU BENCHMARK: Bắn đồng thời ${count} request mua sản phẩm #1...`, 'warn');
+  appendConsoleLog(`🚀 BẮT ĐẦU BENCHMARK: Bắn đồng thời ${count} request mua sản phẩm #${productId} (${selectedProduct.name})...`, 'warn');
   const startTime = performance.now();
 
   const requests = [];
@@ -412,10 +526,10 @@ async function runLiveConcurrencyBenchmark() {
       paymentMethod: 'VNPAY',
       items: [
         {
-          productId: 1,
-          productName: 'iPhone 16 Pro Max (Flash Sale Test)',
-          sku: 'IPHONE-16-PM-256',
-          price: 19990000,
+          productId: selectedProduct.id,
+          productName: selectedProduct.name,
+          sku: selectedProduct.sku || `SKU-${selectedProduct.id}`,
+          price: testPrice,
           quantity: 1
         }
       ]
@@ -455,8 +569,8 @@ async function runLiveConcurrencyBenchmark() {
   appendConsoleLog(`🏁 HOÀN TẤT BENCHMARK trong ${duration}ms!`, 'warn');
   appendConsoleLog(`📊 Tổng gửi: ${count} | Thành công: ${successes} | Bị từ chối: ${rejects}`, 'info');
 
-  // Verify final database stock
-  const statsRes = await fetch(`${API_BASE}/orders/benchmark/stats?productId=1`, {
+  // Verify final database stock for this product
+  const statsRes = await fetch(`${API_BASE}/orders/benchmark/stats?productId=${productId}`, {
     headers: authHeaders()
   }).then(r => r.json()).catch(() => ({}));
   const finalStock = statsRes.data?.currentStock ?? 0;
@@ -470,11 +584,17 @@ async function runLiveConcurrencyBenchmark() {
   oversoldEl.innerText = oversold;
 
   if (oversold === 0 && finalStock >= 0) {
-    appendConsoleLog('🛡️ KẾT QUẢ ĐẠT CHUẨN: KHÔNG CÓ RACE CONDITION (ÂM KHO = 0)! Redis Distributed Lock hoạt động hoàn hảo!', 'info');
-    showToast(`Benchmark thành công: ${successes} mua được, ${rejects} từ chối. Kho = ${finalStock}`, 'success');
+    appendConsoleLog(`🛡️ KẾT QUẢ ĐẠT CHUẨN: KHÔNG CÓ RACE CONDITION (ÂM KHO = 0)! Sản phẩm #${productId} bảo vệ kho thành công!`, 'info');
+    showToast(`Benchmark thành công: ${successes} mua được, ${rejects} từ chối. Kho #${productId} = ${finalStock}`, 'success');
   } else {
-    appendConsoleLog('⚠️ PHÁT HIỆN LỖI: Kho bị âm!', 'err');
+    appendConsoleLog(`⚠️ PHÁT HIỆN LỖI: Kho #${productId} bị âm!`, 'err');
   }
+
+  // Cập nhật tồn kho sản phẩm trong state và dropdown
+  const curP = state.products.find(p => p.id === productId);
+  if (curP) curP.stock = finalStock;
+  updateBenchmarkProductDetails(productId);
+  populateBenchmarkProductSelect();
 
   if (runBtn) runBtn.disabled = false;
   refreshAllInventories();
