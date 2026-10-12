@@ -1,0 +1,1214 @@
+{
+  "info": {
+    "_postman_id": "a82b4519-74d2-4e90-8d5f-9e1234567890",
+    "name": "NEXUS Omnichannel E-Commerce Platform - Full Test Suite",
+    "description": "Bộ sưu tập Postman Collection hoàn chỉnh cho toàn bộ hệ thống Microservices Thương Mại Điện Tử Đa Kênh (NEXUS COMMERCE).\n\nBao gồm 7 Module kiểm thử toàn diện:\n1. Authentication & RBAC (Đăng ký, Đăng nhập Admin / Customer A / Customer B, Token Validation)\n2. Product Catalog (Public API, Lọc danh mục, Flash Sale, Tìm kiếm, Admin CRUD)\n3. Order & Inventory Management (Tồn kho thực tế, Khóa phân tán Redis Lock, Chống giả mạo giá & ID, Quản trị kho)\n4. Concurrency & Race Condition Benchmark (Reset kho, Bắn tải đồng thời, Báo cáo âm kho)\n5. Payment & Saga Distributed Transactions (Saga Choreography, Bồi hoàn khi FAIL, Chống thanh toán lại Idempotency, Bảo vệ quyền sở hữu User A / User B)\n6. Notification Service (Nhận sự kiện qua RabbitMQ Topic Exchange)\n7. Health Checks Matrix (Kiểm tra trạng thái hoạt động của 6 Microservices)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customer_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customer_b_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "latest_order_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "latest_order_number",
+      "value": "ORD-SAMPLE",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication & RBAC",
+      "item": [
+        {
+          "name": "1.1 Đăng Nhập Admin (Lưu Token Quản Trị)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Đăng nhập Admin thành công', function () {",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "    pm.expect(jsonData.data.user.role).to.eql('ADMIN');",
+                  "});",
+                  "if (jsonData.success && jsonData.data && jsonData.data.token) {",
+                  "    pm.collectionVariables.set('admin_token', jsonData.data.token);",
+                  "    console.log('>>> [Admin Token saved]:', jsonData.data.token.substring(0, 20) + '...');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@ecommerce.com\",\n  \"password\": \"Admin@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "1.2 Đăng Nhập Customer A (Lưu Token Khách Mua A)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Đăng nhập Customer A thành công', function () {",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "    pm.expect(jsonData.data.user.role).to.eql('CUSTOMER');",
+                  "});",
+                  "if (jsonData.success && jsonData.data && jsonData.data.token) {",
+                  "    pm.collectionVariables.set('customer_token', jsonData.data.token);",
+                  "    console.log('>>> [Customer A Token saved]:', jsonData.data.token.substring(0, 20) + '...');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"customer@ecommerce.com\",\n  \"password\": \"Customer@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "1.3 Đăng Nhập Customer B (Lưu Token Khách Mua B)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.success && jsonData.data && jsonData.data.token) {",
+                  "    pm.collectionVariables.set('customer_b_token', jsonData.data.token);",
+                  "    console.log('>>> [Customer B Token saved]:', jsonData.data.token.substring(0, 20) + '...');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"customerB@ecommerce.com\",\n  \"password\": \"Customer@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "1.4 Đăng Ký Tài Khoản Mới (Register New User)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Đăng ký mới trả về 201 hoặc 400 nếu đã tồn tại', function () {",
+                  "    pm.expect([201, 400]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nguyenvana_new@test.com\",\n  \"password\": \"Customer@123\",\n  \"fullName\": \"Nguyễn Văn A (Mới)\",\n  \"phone\": \"0981112223\",\n  \"role\": \"CUSTOMER\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "1.5 Xác Thực JWT Token (Validate Active Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Token hợp lệ trả về 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customer_token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "validate"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Product Catalog (Public & Admin)",
+      "item": [
+        {
+          "name": "2.1 Lấy Tất Cả Sản Phẩm (Public Catalog)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Public Catalog trả về 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "    pm.expect(json.count).to.be.above(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["products"]
+            }
+          }
+        },
+        {
+          "name": "2.2 Lọc Sản Phẩm Flash Sale (Deals)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Lọc Flash Sale thành công', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.data.every(p => p.flashSale === true)).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products?flashSale=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["products"],
+              "query": [
+                { "key": "flashSale", "value": "true" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.3 Lọc Sản Phẩm Theo Danh Mục (Smartphones)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Lọc theo category thành công', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.data.every(p => p.categorySlug === 'smartphones')).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products?category=smartphones",
+              "host": ["{{baseUrl}}"],
+              "path": ["products"],
+              "query": [
+                { "key": "category", "value": "smartphones" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.4 Tìm Kiếm Sản Phẩm (Keyword Search)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Tìm kiếm trả về 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products?keyword=iPhone",
+              "host": ["{{baseUrl}}"],
+              "path": ["products"],
+              "query": [
+                { "key": "keyword", "value": "iPhone" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.5 Chi Tiết Sản Phẩm #1 (iPhone 16 Pro Max)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Lấy chi tiết sản phẩm 1 thành công', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.data.id).to.eql(1);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "1"]
+            }
+          }
+        },
+        {
+          "name": "2.6 Lấy Danh Mục Sản Phẩm (Categories)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Lấy danh mục thành công', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.data.length).to.be.above(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "categories"]
+            }
+          }
+        },
+        {
+          "name": "2.7 Thêm Mới Sản Phẩm (Yêu cầu Quyền ADMIN)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Admin thêm sản phẩm thành công (201 Created)', function () {",
+                  "    pm.expect([201, 400]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tai Nghe Gaming Logitech G Pro X 2 LIGHTSPEED\",\n  \"sku\": \"LOGI-GPRO-X2\",\n  \"slug\": \"tai-nghe-logitech-g-pro-x-2\",\n  \"description\": \"Màng loa Graphene 50mm, kết nối LIGHTSPEED siêu tốc, pin 50 giờ.\",\n  \"price\": 5990000,\n  \"originalPrice\": 6490000,\n  \"stock\": 30,\n  \"categorySlug\": \"audio\",\n  \"imageUrl\": \"https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=800&q=80\",\n  \"flashSale\": true,\n  \"flashSalePrice\": 4990000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["products"]
+            }
+          }
+        },
+        {
+          "name": "2.8 Thử Thêm Sản Phẩm Bằng Customer Token (Kỳ vọng 403 Forbidden)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Customer bị chặn tạo sản phẩm với HTTP 403 Forbidden', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customer_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Hack Product Test\",\n  \"sku\": \"HACK-001\",\n  \"price\": 1000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["products"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Order & Inventory Management",
+      "item": [
+        {
+          "name": "3.1 Lấy Tồn Kho Thực Tế Sản Phẩm (Public GET /orders/inventory/1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Lấy tồn kho thực tế từ Order Service thành công (200 OK)', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "    pm.expect(json.availableStock).to.be.a('number');",
+                  "    console.log('Tồn kho thực tế Sản phẩm #1:', json.availableStock);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/inventory/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "inventory", "1"]
+            }
+          }
+        },
+        {
+          "name": "3.2 Tạo Đơn Hàng Thành Công (Customer Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Tạo đơn hàng thành công (201 Created)', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "    pm.expect(json.data.status).to.eql('PENDING');",
+                  "    pm.collectionVariables.set('latest_order_id', json.data.id);",
+                  "    pm.collectionVariables.set('latest_order_number', json.data.orderNumber);",
+                  "    console.log('>>> [Saved Order ID]:', json.data.id, 'Order Number:', json.data.orderNumber);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customer_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shippingAddress\": \"77 Nguyễn Huệ, Quận 1, TP.HCM\",\n  \"phone\": \"0912345678\",\n  \"paymentMethod\": \"VNPAY\",\n  \"items\": [\n    {\n      \"productId\": 2,\n      \"quantity\": 1\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "3.3 Thử Tạo Đơn Không Có Token (Kỳ vọng 401 Unauthorized)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Gateway chặn 401 Unauthorized khi thiếu Token', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"productId\": 1, \"quantity\": 1 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "3.4 Chống Giả Mạo Giá & ID (Price & Identity Tampering Guard)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Đơn hàng được tạo với giá snapshot catalog và customerId từ JWT', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.data.customerId).to.not.eql(9999);",
+                  "    pm.expect(json.data.items[0].price).to.be.above(1);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customer_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": 9999,\n  \"customerEmail\": \"hacker@blackhat.com\",\n  \"shippingAddress\": \"Darknet Server\",\n  \"phone\": \"0999999999\",\n  \"paymentMethod\": \"VNPAY\",\n  \"items\": [\n    {\n      \"productId\": 2,\n      \"productName\": \"Fake Phone\",\n      \"price\": 1,\n      \"quantity\": 1\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "3.5 Lấy Danh Sách Đơn Hàng Của Tôi (Customer GET /orders)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Lấy danh sách đơn hàng của khách hàng thành công (200 OK)', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customer_token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "3.6 Lấy Toàn Bộ Đơn Hàng Hệ Thống (Admin GET /orders/admin/all)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Admin lấy toàn bộ đơn hàng thành công (200 OK)', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "    pm.expect(json.count).to.be.above(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/admin/all",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "admin", "all"]
+            }
+          }
+        },
+        {
+          "name": "3.7 Thử Lấy Toàn Bộ Đơn Bằng Customer (Kỳ vọng 403 Forbidden)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Customer bị chặn vào route admin với 403 Forbidden', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customer_token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/admin/all",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "admin", "all"]
+            }
+          }
+        },
+        {
+          "name": "3.8 Cập Nhật Tồn Kho (Admin PUT /orders/admin/inventory/1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Admin cập nhật tồn kho thành công (200 OK)', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stock\": 10\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/admin/inventory/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "admin", "inventory", "1"]
+            }
+          }
+        },
+        {
+          "name": "3.9 Chuyển Trạng Thái Đơn Hàng (Admin PUT /orders/{id}/status)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Admin đổi trạng thái đơn hàng thành công hoặc báo lỗi state machine', function () {",
+                  "    pm.expect([200, 400, 500]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"SHIPPING\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{latest_order_id}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{latest_order_id}}", "status"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Concurrency Benchmark & Flash Sale Lab",
+      "item": [
+        {
+          "name": "4.1 Reset Kho Sản Phẩm #1 về 10 Cái (Admin Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Reset tồn kho về 10 thành công (200 OK)', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/benchmark/reset-stock?productId=1&stock=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "benchmark", "reset-stock"],
+              "query": [
+                { "key": "productId", "value": "1" },
+                { "key": "stock", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "4.2 Xem Thống Kê Benchmark & Kiểm Tra Âm Kho (Race Condition)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Thống kê Benchmark trả về 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "    pm.expect(json.data.raceConditionDetected).to.eql(false);",
+                  "    console.log('Tồn kho hiện tại:', json.data.currentStock, 'Race Condition Detected:', json.data.raceConditionDetected);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/benchmark/stats?productId=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "benchmark", "stats"],
+              "query": [
+                { "key": "productId", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "4.3 Thử Reset Kho Bằng Customer Token (Kỳ vọng 403 Forbidden)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Customer bị từ chối reset kho với 403 Forbidden', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customer_token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/benchmark/reset-stock?productId=1&stock=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "benchmark", "reset-stock"],
+              "query": [
+                { "key": "productId", "value": "1" },
+                { "key": "stock", "value": "10" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Payment & Saga Distributed Transactions",
+      "item": [
+        {
+          "name": "5.1 Lấy Chi Tiết Giao Dịch Thanh Toán Theo Order ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Lấy thông tin giao dịch thanh toán thành công (200 OK)', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customer_token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payments/order/{{latest_order_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "order", "{{latest_order_id}}"]
+            }
+          }
+        },
+        {
+          "name": "5.2 Thanh Toán Thành Công (Saga -> Chuyển Đơn CONFIRMED)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Thanh toán thành công trả về 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customer_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": {{latest_order_id}},\n  \"action\": \"SUCCESS\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/process",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "process"]
+            }
+          }
+        },
+        {
+          "name": "5.3 Giả Lập Thanh Toán Thất Bại (Saga -> Bồi Hoàn CANCELLED & Hoàn Kho)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Thanh toán thất bại kích hoạt Saga bồi hoàn hoàn kho (200 OK)', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customer_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": {{latest_order_id}},\n  \"action\": \"FAIL\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/process",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "process"]
+            }
+          }
+        },
+        {
+          "name": "5.4 Chống Xử Lý Lại Giao Dịch (Idempotency Guard - Kỳ vọng 400 Bad Request)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Hệ thống từ chối thanh toán lại giao dịch đã hoàn tất với HTTP 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customer_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": {{latest_order_id}},\n  \"action\": \"SUCCESS\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/process",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "process"]
+            }
+          }
+        },
+        {
+          "name": "5.5 User B Cố Thanh Toán Đơn Của User A (Ownership Guard - Kỳ vọng 403 Forbidden)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('User B bị chặn thanh toán đơn của User A với HTTP 403 Forbidden', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customer_b_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": {{latest_order_id}},\n  \"action\": \"SUCCESS\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/process",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "process"]
+            }
+          }
+        },
+        {
+          "name": "5.6 Lấy Toàn Bộ Giao Dịch Thanh Toán (Admin GET /payments)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Admin xem danh sách giao dịch thành công (200 OK)', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments"]
+            }
+          }
+        },
+        {
+          "name": "5.7 Thử Lấy Toàn Bộ Giao Dịch Bằng Customer (Kỳ vọng 403 Forbidden)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Customer bị chặn xem danh sách thanh toán với HTTP 403 Forbidden', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customer_token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Notification Service (RabbitMQ Events)",
+      "item": [
+        {
+          "name": "6.1 Lấy Danh Sách Thông Báo Đã Tiêu Thụ Từ RabbitMQ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Lấy danh sách thông báo thành công (200 OK)', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "    console.log('Tổng số thông báo nhận từ RabbitMQ:', json.data.length);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customer_token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications"]
+            }
+          }
+        },
+        {
+          "name": "6.2 Thử Lấy Thông Báo Không Có Token (Kỳ vọng 401 Unauthorized)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Gateway chặn 401 Unauthorized khi thiếu Token', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Health Checks Matrix (6 Microservices)",
+      "item": [
+        {
+          "name": "7.1 API Gateway Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "health"]
+            }
+          }
+        },
+        {
+          "name": "7.2 Auth Service Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "health"]
+            }
+          }
+        },
+        {
+          "name": "7.3 Product Service Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "health"]
+            }
+          }
+        },
+        {
+          "name": "7.4 Order Service Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "health"]
+            }
+          }
+        },
+        {
+          "name": "7.5 Payment Service Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "health"]
+            }
+          }
+        },
+        {
+          "name": "7.6 Notification Service Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "health"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
