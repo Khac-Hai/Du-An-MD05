@@ -2,15 +2,16 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Counter, Rate, Trend } from 'k6/metrics';
 
-// Danh dau ca 201 (Tao don thanh cong) va 409 (Tu choi hop le khi het hang) la Expected Status
+// Danh dau 200 (Login/Inventory), 201 (Tao don thanh cong) va 409 (Tu choi hop le khi het hang) la Expected Status
 // Giup chi so http_req_failed hien thi chinh xac 0.00% tren bao cao hoi dong
-http.setResponseCallback(http.expectedStatuses(201, 409));
+http.setResponseCallback(http.expectedStatuses(200, 201, 409));
 
 // Cac chi so do luong tuy chinh cho Bao cao Bao ve Do an
 const successfulOrders = new Counter('successful_orders');
 const soldOutRejections = new Counter('sold_out_rejections');
 const rateLimitHits = new Counter('rate_limit_hits');
 const orderDuration = new Trend('order_duration_ms');
+const successOrderDuration = new Trend('success_order_duration_ms');
 
 export const options = {
   scenarios: {
@@ -99,6 +100,7 @@ export default function (data) {
 
   if (res.status === 201) {
     successfulOrders.add(1);
+    successOrderDuration.add(res.timings.duration);
     check(res, { 'Tao don hang thanh cong (201 Created)': (r) => r.status === 201 });
   } else if (res.status === 409) {
     soldOutRejections.add(1);

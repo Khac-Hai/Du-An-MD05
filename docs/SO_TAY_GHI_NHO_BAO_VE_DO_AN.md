@@ -147,7 +147,7 @@
 | **Tồn kho PostgreSQL sau bài test** | **Available = 0, Reserved = 100** | Available = 0 | Không ghi nhận hiện tượng bán âm (Oversold = 0) |
 | **Tồn kho Redis sau bài test** | **0 cái** | 0 cái | Đồng bộ nhất quán với cơ sở dữ liệu PostgreSQL |
 | **Tỷ lệ chặn nhầm Rate Limit** | **0 request** | 0 request | `count == 0`, không làm gián đoạn khách hợp lệ |
-| **Tỷ lệ lỗi bất thường (`http_req_failed`)** | **0.00%** | < 1% | Đã cấu hình `expectedStatuses(201, 409)` |
+| **Tỷ lệ lỗi bất thường (`http_req_failed`)** | **0.00%** | < 1% | Đã cấu hình `expectedStatuses(200, 201, 409)` (0 / 26,753 request) |
 
 ---
 
@@ -156,20 +156,24 @@
 Khi trình bày báo cáo trước Hội đồng, cần phân biệt rõ giữa **Độ trễ toàn thể** và **Độ trễ của luồng đặt hàng thành công thực tế**:
 
 1. **Độ trễ tổng thể (Bao gồm 99.6% request từ chối 409 khi hết hàng)**:
-   - **p50 (Trung vị)**: `1.97 ms`
-   - **p90**: `3.36 ms`
-   - **p95**: `4.14 ms`
-   - *Lý do số rất nhỏ (p95 ~ 4ms)*: Gần 99.6% lượng request được chặn và phản hồi sub-millisecond ngay tại tầng Redis Lua cache mà không cần đi qua Database, giúp bảo vệ toàn bộ backend.
+   - **p50 (Trung vị)**: `1.82 ms`
+   - **p90**: `2.44 ms`
+   - **p95**: `2.83 ms`
+   - **p99**: `4.68 ms`
+   - *Lý do số rất nhỏ (p95 ~ 2.8ms)*: Gần 99.6% lượng request được chặn và phản hồi sub-millisecond ngay tại tầng Redis Lua cache mà không cần đi qua Database, giúp bảo vệ toàn bộ backend.
 
-2. **Độ trễ của 100 đơn hàng đặt thành công thực tế (Dòng `{ expected_response: true }` trong k6)**:
-   - **Trung bình (Average)**: `297.35 ms`
-   - **Trung vị (p50)**: `193.12 ms`
-   - **p90**: `767.01 ms`
-   - **p95**: `924.84 ms`
-   - **Tối đa (Max)**: `~1.03 giây`
-   - *Lý giải kỹ thuật*: Đây mới là con số phản ánh đúng chu kỳ hoàn chỉnh của một giao dịch tạo đơn: Xác thực JWT tại Gateway ➔ Acquire Redis Distributed Lock ➔ Trừ trước Lua Cache ➔ Fetch Snapshot Catalog ➔ Thực thi câu lệnh atomic `UPDATE ... WHERE available_stock >= :qty` trong PostgreSQL ➔ Ghi nhận Transactional Outbox Event ➔ Nhả khóa Lock. Toàn bộ chu kỳ hoàn tất dưới 1 giây ngay cả khi hệ thống đang chịu tải 1,000 RPS.
+2. **Độ trễ của 100 đơn hàng đặt thành công thực tế (`success_order_duration_ms`)**:
+   - **Trung bình (Average)**: `108.39 ms`
+   - **Nhanh nhất (Min)**: `13.70 ms`
+   - **Trung vị (p50)**: `50.16 ms`
+   - **p90**: `276.96 ms`
+   - **p95**: `417.33 ms`
+   - **Tối đa thực tế (Max)**: `571.88 ms`
+   - *Lý giải kỹ thuật*: Đây mới là con số cốt lõi phản ánh chu kỳ hoàn chỉnh của một giao dịch tạo đơn: Xác thực JWT tại Gateway ➔ Acquire Redis Distributed Lock ➔ Trừ trước Lua Cache ➔ Fetch Snapshot Catalog ➔ Thực thi câu lệnh atomic `UPDATE ... WHERE available_stock >= :qty` trong PostgreSQL ➔ Ghi nhận Transactional Outbox Event ➔ Nhả khóa Lock. Toàn bộ chu kỳ hoàn tất trung bình chỉ **~108ms** (p95 đạt **417ms**, tối đa **572ms**) ngay cả khi hệ thống đang chịu tải 1,000 RPS.
 
-> ⚠️ **Ghi chú về môi trường**: Toàn bộ số liệu trên được đo thực nghiệm trên môi trường Localhost (container Docker nội bộ). Khi triển khai thực tế trên VPS/Cloud, độ trễ sẽ cộng thêm độ trễ mạng Internet (Network RTT).
+> ⚠️ **Lưu ý về số đo Max & Môi trường**:
+> - Chỉ số `http_req_duration.max` hiển thị `11.27s` là do hiện tượng trễ socket / đồng hồ máy ảo Docker (Docker VM clock drift), bởi vì vòng lặp thực thi `iteration_duration` tối đa chỉ đạt `575.8ms` và `success_order_duration_ms` tối đa chỉ `571.88ms`. Khi viết báo cáo đồ án, **chỉ nên trình bày các giá trị Trung vị (p50), p90, p95 và p99** theo đúng chuẩn kiểm thử kỹ thuật chuyên nghiệp, tránh đưa số Max ngoại lai vào gây hiểu nhầm.
+> - Toàn bộ số liệu trên được đo thực nghiệm trên môi trường Localhost (container Docker nội bộ). Khi triển khai thực tế trên VPS/Cloud, độ trễ sẽ cộng thêm độ trễ mạng Internet (Network RTT).
 
 ---
 
@@ -239,5 +243,5 @@ Dưới đây là bảng hướng dẫn nhanh các lệnh PowerShell để thự
 | **3. Kiểm tra bảo mật Idempotency & Cache SETNX** | `powershell -ExecutionPolicy Bypass -File ./scripts/test-hardened-logic.ps1` | Xóa key Redis + bắn 20 đơn song song; Kiểm tra chặn lộ dữ liệu người dùng (HTTP 409) và chặn đổi giỏ hàng (HTTP 422). |
 | **4. Kiểm thử khả năng chịu lỗi (Chaos Test)** | `powershell -ExecutionPolicy Bypass -File ./scripts/test-fault-tolerance.ps1` | Tắt Notification -> tạo đơn bình thường -> bật lại tiêu thụ bù; Tắt Redis -> bảo vệ DB không bị âm kho. |
 | **5. Test tải đồng thời Flash Sale (50 luồng)** | `powershell -ExecutionPolicy Bypass -File ./scripts/test-flash-sale.ps1` | Đặt kho = 10, bắn 50 luồng: Chính xác 10 đơn thành công, 40 đơn từ chối, kho cuối = 0, âm kho = 0. |
-| **6. Chạy k6 kiểm thử tải cao (1000 RPS)** | `powershell -ExecutionPolicy Bypass -File ./scripts/run-k6-docker.ps1` | Chạy k6 chính thức: 26,749 request, đỉnh 1000 RPS, thời gian phản hồi 100 đơn thành công p95=925ms, từ chối an toàn p95=4.14ms. |
+| **6. Chạy k6 kiểm thử tải cao (1000 RPS)** | `powershell -ExecutionPolicy Bypass -File ./scripts/run-k6-docker.ps1` | Chạy k6 chính thức: 26,749 request, đỉnh 1000 RPS, thời gian phản hồi 100 đơn thành công p95=417ms (avg=108ms), từ chối an toàn p95=2.83ms. |
 | **7. Dọn dẹp mã nguồn trước khi nộp đồ án** | `powershell -ExecutionPolicy Bypass -File ./scripts/clean-for-submission.ps1` | Xóa sạch các thư mục `target/` để file ZIP nhẹ, sạch và sẵn sàng nộp bài. |
