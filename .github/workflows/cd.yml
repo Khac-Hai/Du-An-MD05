@@ -1,8 +1,8 @@
 name: CD
 
-# Deploy lên VPS bằng SSH. Mặc định chạy THỦ CÔNG (nút "Run workflow") để
-# không làm hỏng bản demo ngoài ý muốn. Muốn tự động deploy sau khi CI xanh,
-# bỏ comment khối workflow_run bên dưới.
+# Deploy lên VPS bằng SSH.
+# - Tự động: mỗi khi CI trên nhánh main chạy XONG VÀ THÀNH CÔNG.
+# - Thủ công: nút "Run workflow" ở tab Actions.
 on:
   workflow_dispatch:
     inputs:
@@ -10,10 +10,10 @@ on:
         description: "Build lại TẤT CẢ service (chậm, tốn RAM)"
         type: boolean
         default: false
-  # workflow_run:
-  #   workflows: ["CI"]
-  #   types: [completed]
-  #   branches: [main]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
 
 concurrency:
   group: cd-production
@@ -26,7 +26,7 @@ jobs:
   deploy:
     name: Deploy to VPS
     runs-on: ubuntu-latest
-    # if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Cấu hình SSH
         env:
