@@ -1,4 +1,4 @@
-﻿[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 # scripts/verify-fixes.ps1
 # Kịch bản kiểm thử toàn diện 9 bài test kiến trúc Microservices & Bảo vệ đồ án
 $ErrorActionPreference = "Continue"
@@ -150,7 +150,7 @@ if ($testOrderId) {
         action = "FAIL"
     } | ConvertTo-Json
     $payFailRes = Invoke-RestMethod -Uri "http://localhost:8080/api/v1/payments/process" -Method Post -Body $payFailBody -Headers $headersCustomer -ContentType "application/json"
-    Write-Host "[ĐẠT] Kết quả xử lý thanh toán: Thông báo = $($payFailRes.message)" -ForegroundColor Green
+    Write-Host "[ĐẠT] Kết quả xử lý thanh toán: Trạng thái = $($payFailRes.data.status), Giao dịch ID = $($payFailRes.data.transactionId) (Kích hoạt Saga bồi hoàn)" -ForegroundColor Green
 
     Start-Sleep -Seconds 2
 

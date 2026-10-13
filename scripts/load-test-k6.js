@@ -2,7 +2,11 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Counter, Rate, Trend } from 'k6/metrics';
 
-// Các chỉ số đo lường tùy chỉnh cho Báo cáo Bảo vệ Đồ án
+// Danh dau ca 201 (Tao don thanh cong) va 409 (Tu choi hop le khi het hang) la Expected Status
+// Giup chi so http_req_failed hien thi chinh xac 0.00% tren bao cao hoi dong
+http.setResponseCallback(http.expectedStatuses(201, 409));
+
+// Cac chi so do luong tuy chinh cho Bao cao Bao ve Do an
 const successfulOrders = new Counter('successful_orders');
 const soldOutRejections = new Counter('sold_out_rejections');
 const rateLimitHits = new Counter('rate_limit_hits');
@@ -10,7 +14,7 @@ const orderDuration = new Trend('order_duration_ms');
 
 export const options = {
   scenarios: {
-    // Kịch bản: Bùng nổ tải Flash Sale đồng thời cực đại (500 - 1000 req/s)
+    // Kich ban: Bung no tai Flash Sale dong thoi cuc dai (500 - 1000 req/s)
     flash_sale_spike: {
       executor: 'ramping-arrival-rate',
       startRate: 100,
@@ -18,28 +22,28 @@ export const options = {
       preAllocatedVUs: 200,
       maxVUs: 1000,
       stages: [
-        { target: 500, duration: '10s' },  // Khởi động tăng dần lên 500 RPS
-        { target: 1000, duration: '20s' }, // Giờ cao điểm Flash Sale đạt đỉnh 1000 RPS
-        { target: 500, duration: '10s' },  // Hạ nhiệt dần về 500 RPS
-        { target: 0, duration: '5s' },     // Kết thúc
+        { target: 500, duration: '10s' },  // Khoi dong tang dan len 500 RPS
+        { target: 1000, duration: '20s' }, // Gio cao diem Flash Sale dat dinh 1000 RPS
+        { target: 500, duration: '10s' },  // Ha nhiet dan ve 500 RPS
+        { target: 0, duration: '5s' },     // Ket thuc
       ],
     },
   },
   thresholds: {
-    // Tiêu chuẩn cam kết chất lượng (Quality Gates) khi báo cáo với Hội đồng
-    'http_req_duration': ['p(95)<1500', 'p(99)<3000'], // 95% request phản hồi dưới 1.5s ngay cả khi tải 1000 RPS
-    'rate_limit_hits': ['count==0'],                  // Không có request nào bị chặn nhầm bởi Rate Limiting
-    'successful_orders': ['count==100'],              // Đúng chính xác 100 đơn thành công (khớp tuyệt đối với 100 tồn kho đã nạp)
+    // Tieu chuan cam ket chat luong (Quality Gates) khi bao cao voi Hoi dong
+    'http_req_duration': ['p(95)<1500', 'p(99)<3000'], // 95% request phan hoi duoi 1.5s ngay ca khi tai 1000 RPS
+    'rate_limit_hits': ['count==0'],                  // Khong co request nao bi chan nham boi Rate Limiting
+    'successful_orders': ['count==100'],              // Dung chinh xac 100 don thanh cong (khop tuyet doi voi 100 ton kho da nap)
   },
 };
 
 const BASE_URL = __ENV.GATEWAY_URL || 'http://localhost:8080';
 
-// Hàm thiết lập ban đầu (Setup): Đăng nhập tài khoản & Đặt lại tồn kho trước khi test tải
+// Ham thiet lap ban dau (Setup): Dang nhap tai khoan & Dat lai ton kho truoc khi test tai
 export function setup() {
-  console.log('>>> [k6 Thiết lập] Đang đăng nhập tài khoản Khách hàng & Quản trị viên...');
+  console.log('>>> [k6 Setup] Dang dang nhap tai khoan Customer & Admin...');
 
-  // 1. Đăng nhập Khách hàng
+  // 1. Dang nhap Khach hang
   const loginRes = http.post(
     `${BASE_URL}/api/v1/auth/login`,
     JSON.stringify({ email: 'customer@ecommerce.com', password: 'Customer@123' }),
@@ -49,12 +53,12 @@ export function setup() {
   let token = '';
   if (loginRes.status === 200) {
     token = loginRes.json('data.token');
-    console.log('>>> [k6 Thiết lập] Lấy mã JWT Token Khách hàng thành công.');
+    console.log('>>> [k6 Setup] Lay ma JWT Token Customer thanh cong.');
   } else {
-    console.error(`Đăng nhập thất bại: ${loginRes.body}`);
+    console.error(`Dang nhap that bai: ${loginRes.body}`);
   }
 
-  // 2. Đăng nhập Admin & Đặt lại tồn kho Sản phẩm #1 về 100 cái để chạy test tải
+  // 2. Dang nhap Admin & Dat lai ton kho San pham #1 ve 100 cai de chay test tai
   const adminLoginRes = http.post(
     `${BASE_URL}/api/v1/auth/login`,
     JSON.stringify({ email: 'admin@ecommerce.com', password: 'Admin@123' }),
@@ -67,7 +71,7 @@ export function setup() {
       null,
       { headers: { Authorization: `Bearer ${adminToken}` } }
     );
-    console.log('>>> [k6 Thiết lập] Đã khởi tạo lại kho Sản phẩm #1 thành đúng 100 cái.');
+    console.log('>>> [k6 Setup] Da khoi tao lai kho San pham #1 thanh dung 100 cai.');
   }
 
   return { token };
@@ -78,50 +82,49 @@ export default function (data) {
     items: [
       { productId: 1, quantity: 1 }
     ],
-    notes: 'Yêu cầu kiểm thử tải từ k6'
+    notes: 'Yeu cau kiem thu tai tu k6'
   });
 
   const params = {
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${data.token}`,
-      'X-Forwarded-For': `10.0.0.${Math.floor(Math.random() * 254) + 1}`, // Giả lập dải IP khác nhau từ nhiều client đồng thời
+      'X-Forwarded-For': `10.0.0.${Math.floor(Math.random() * 254) + 1}`, // Gia lap dai IP khac nhau tu nhieu client dong thoi
     },
     timeout: '5s',
   };
 
-  const startTime = Date.now();
   const res = http.post(`${BASE_URL}/api/v1/orders`, payload, params);
-  orderDuration.add(Date.now() - startTime);
+  orderDuration.add(res.timings.duration);
 
   if (res.status === 201) {
     successfulOrders.add(1);
-    check(res, { 'Tạo đơn hàng thành công (201 Created)': (r) => r.status === 201 });
+    check(res, { 'Tao don hang thanh cong (201 Created)': (r) => r.status === 201 });
   } else if (res.status === 409) {
     soldOutRejections.add(1);
-    check(res, { 'Từ chối an toàn khi hết hàng (409 Conflict)': (r) => r.status === 409 });
+    check(res, { 'Tu choi an toan khi het hang (409 Conflict)': (r) => r.status === 409 });
   } else if (res.status === 400) {
-    check(res, { 'Lỗi Bad Request không mong muốn (400)': (r) => false });
+    check(res, { 'Loi Bad Request khong mong muon (400)': (r) => false });
   } else if (res.status === 429) {
     rateLimitHits.add(1);
-    console.warn('Đã chạm giới hạn Rate Limit (Mã 429)! Cần tăng thêm giá trị RATE_LIMIT_MAX.');
+    console.warn('Da cham gioi han Rate Limit (Ma 429)! Can tang them gia tri RATE_LIMIT_MAX.');
   } else {
-    check(res, { 'Trạng thái ngoài dự kiến': (r) => false });
+    check(res, { 'Trang thai ngoai du kien': (r) => false });
   }
 }
 
-// Hàm dọn dẹp sau bài test (Teardown): Kiểm tra tồn kho cuối cùng trong cơ sở dữ liệu
+// Ham don dep sau bai test (Teardown): Kiem tra ton kho cuoi cung trong co so du lieu
 export function teardown(data) {
-  console.log('>>> [k6 Hoàn tất] Bài test tải kết thúc! Đang kiểm tra tồn kho thực tế trong cơ sở dữ liệu...');
+  console.log('>>> [k6 Teardown] Bai test tai ket thuc! Dang kiem tra ton kho thuc te trong DB...');
   const invRes = http.get(`${BASE_URL}/api/v1/orders/inventory/1`);
   if (invRes.status === 200) {
     const available = invRes.json('availableStock');
     const reserved = invRes.json('reservedStock');
-    console.log(`>>> [Tồn kho Sản phẩm #1 sau cùng]: Khả dụng=${available}, Đang giữ=${reserved}`);
+    console.log(`>>> [Ton kho San pham #1 sau cung]: Kha dung = ${available}, Dang giu = ${reserved}`);
     if (available < 0) {
-      console.error(`❌ CẢNH BÁO NGUY HIỂM: ÂM KHO (OVERSOLD)! Tồn kho = ${available}`);
+      console.error(`>>> CANH BAO: Phat hien am kho (Oversold)! Ton kho = ${available}`);
     } else if (available === 0) {
-      console.log('✅ BẢO VỆ KHO THÀNH CÔNG TUYỆT ĐỐI: Đúng 100 đơn mua hết hàng, Tồn kho chạm 0 và KHÔNG BỊ ÂM KHO!');
+      console.log('>>> BAO TOAN KHO THANH CONG: Dung 100 don mua thanh cong, ton kho ve 0 va khong ghi nhan oversell.');
     }
   }
 }

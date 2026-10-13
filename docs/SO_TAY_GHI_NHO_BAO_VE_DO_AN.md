@@ -131,34 +131,60 @@
 
 # PHẦN 2: BẢNG SỐ LIỆU ĐO LƯỜNG THỰC NGHIỆM (K6 & CHAOS TESTING)
 
-> *Số liệu này được ghi nhận trực tiếp từ bài kiểm thử tải chính thức bằng công cụ Grafana k6 kết nối qua API Gateway:*
+> *Số liệu này được ghi nhận trực tiếp từ bài kiểm thử tải chính thức bằng công cụ Grafana k6 kết nối qua API Gateway trên môi trường Localhost:*
 
-| Chỉ số đo lường (Metrics) | Kết quả thực tế đạt được | Tiêu chuẩn cam kết đồ án | Đánh giá & Kết luận |
+### 1. Bảng Tổng Hợp Chỉ Số Kiểm Thử Tải k6 (1,000 RPS)
+
+| Chỉ số đo lường (Metrics) | Kết quả thực tế đạt được | Tiêu chuẩn cam kết đồ án | Phân tích kỹ thuật & Đánh giá |
 | :--- | :--- | :--- | :--- |
-| **Công cụ kiểm thử** | **Grafana k6 (Chính thức)** | k6 Container / CLI | Chuẩn quốc tế |
-| **Tổng số lượt gửi (Requests)** | **26,749 requests** | N/A | Hoàn thành 100% kịch bản trong 45 giây |
-| **Tốc độ thông lượng trung bình** | **580.4 requests / giây** | 500 – 1,000 req/s | Đạt chuẩn hệ thống thương mại điện tử |
-| **Tốc độ tại giờ cao điểm (Peak)** | **1,000 requests / giây** | 1,000 req/s | Hệ thống vận hành ổn định, không sập |
-| **Tồn kho sản phẩm ban đầu** | **100 sản phẩm** | 100 cái | Số lượng giới hạn mô phỏng Flash Sale |
-| **Số đơn tạo thành công** | **Đúng 100 đơn** | Đúng 100 đơn | Thành công 100%, không bị bán âm |
-| **Số request bị từ chối hết hàng** | **26,649 requests** | N/A | Bị từ chối ngay tại Redis trong < 1 mili-giây |
-| **Tồn kho PostgreSQL sau bài test** | **Available = 0, Reserved = 100** | Available = 0 | Khớp chính xác tuyệt đối với thực tế |
-| **Tồn kho Redis sau bài test** | **0 cái** | 0 cái | Đồng bộ 100% với cơ sở dữ liệu |
-| **Thời gian phản hồi p50 (Trung vị)** | **1.23 mili-giây (ms)** | < 50 ms | Phản hồi siêu tốc nhờ tầng đệm Redis |
-| **Thời gian phản hồi p95** | **3.02 mili-giây (ms)** | < 1,500 ms | Rất mượt mà |
-| **Thời gian phản hồi p99** | **8.97 mili-giây (ms)** | < 3,000 ms | Ổn định ngay cả khi tải đỉnh 1,000 RPS |
-| **Tỷ lệ chặn nhầm Rate Limit** | **0 request** | 0 request | `count == 0`, không chặn nhầm khách |
+| **Công cụ kiểm thử** | **Grafana k6 (Chính thức)** | k6 Container / CLI | Chuẩn quốc tế cho Microservices |
+| **Tổng số lượt gửi (Requests)** | **26,749 requests** | N/A | Hoàn thành kịch bản Flash Sale trong 45 giây |
+| **Thông lượng trung bình** | **578.3 requests / giây** | 500 – 1,000 req/s | Tải cao liên tục, hệ thống không bị crash |
+| **Thông lượng tại đỉnh (Peak)** | **1,000 requests / giây** | 1,000 req/s | Chịu tải đồng thời cực đại thành công |
+| **Tồn kho ban đầu nạp sẵn** | **100 sản phẩm** | 100 cái | Số lượng hữu hạn mô phỏng Flash Sale |
+| **Số đơn tạo thành công (201)** | **Đúng 100 đơn** | Đúng 100 đơn | Khớp chính xác số lượng tồn kho ban đầu |
+| **Số yêu cầu từ chối hết hàng (409)**| **26,649 requests** | N/A | Từ chối an toàn tại tầng Redis Lua trong < 2ms |
+| **Tồn kho PostgreSQL sau bài test** | **Available = 0, Reserved = 100** | Available = 0 | Không ghi nhận hiện tượng bán âm (Oversold = 0) |
+| **Tồn kho Redis sau bài test** | **0 cái** | 0 cái | Đồng bộ nhất quán với cơ sở dữ liệu PostgreSQL |
+| **Tỷ lệ chặn nhầm Rate Limit** | **0 request** | 0 request | `count == 0`, không làm gián đoạn khách hợp lệ |
+| **Tỷ lệ lỗi bất thường (`http_req_failed`)** | **0.00%** | < 1% | Đã cấu hình `expectedStatuses(201, 409)` |
 
-### Kết Quả Kiểm Thử Khả Năng Chịu Lỗi (Chaos Engineering)
-1. **Sập Notification Service giữa lúc mua hàng**:
-   - Tắt cưỡng bức container `nexus-notification-service` (`docker stop`).
-   - Khách vẫn đặt hàng thành công 100%, trừ kho DB và Redis bình thường, sự kiện được lưu trong bảng Outbox và đẩy sang RabbitMQ.
-   - Bật lại Notification Service: Toàn bộ thông báo được tiêu thụ bù tự động, không thất thoát bất kỳ tin nhắn nào.
-2. **Sập Redis hoàn toàn (Redis Total Outage)**:
-   - Tắt cưỡng bức container `nexus-redis` (`docker stop`).
-   - Gửi yêu cầu đặt hàng: Hệ thống từ chối an toàn với mã HTTP 409/503 để bảo vệ kho.
-   - Tồn kho PostgreSQL: Giữ nguyên 100%, không bị âm kho.
-   - Bật lại Redis: Hệ thống tự động phục hồi ngay lập tức, các đơn đặt hàng sau đó thành công bình thường.
+---
+
+### 2. Phân Tích Độ Trễ Phản Hồi (Latency Breakdown) - Điểm Cần Chú Ý Khi Báo Cáo
+
+Khi trình bày báo cáo trước Hội đồng, cần phân biệt rõ giữa **Độ trễ toàn thể** và **Độ trễ của luồng đặt hàng thành công thực tế**:
+
+1. **Độ trễ tổng thể (Bao gồm 99.6% request từ chối 409 khi hết hàng)**:
+   - **p50 (Trung vị)**: `1.97 ms`
+   - **p90**: `3.36 ms`
+   - **p95**: `4.14 ms`
+   - *Lý do số rất nhỏ (p95 ~ 4ms)*: Gần 99.6% lượng request được chặn và phản hồi sub-millisecond ngay tại tầng Redis Lua cache mà không cần đi qua Database, giúp bảo vệ toàn bộ backend.
+
+2. **Độ trễ của 100 đơn hàng đặt thành công thực tế (Dòng `{ expected_response: true }` trong k6)**:
+   - **Trung bình (Average)**: `297.35 ms`
+   - **Trung vị (p50)**: `193.12 ms`
+   - **p90**: `767.01 ms`
+   - **p95**: `924.84 ms`
+   - **Tối đa (Max)**: `~1.03 giây`
+   - *Lý giải kỹ thuật*: Đây mới là con số phản ánh đúng chu kỳ hoàn chỉnh của một giao dịch tạo đơn: Xác thực JWT tại Gateway ➔ Acquire Redis Distributed Lock ➔ Trừ trước Lua Cache ➔ Fetch Snapshot Catalog ➔ Thực thi câu lệnh atomic `UPDATE ... WHERE available_stock >= :qty` trong PostgreSQL ➔ Ghi nhận Transactional Outbox Event ➔ Nhả khóa Lock. Toàn bộ chu kỳ hoàn tất dưới 1 giây ngay cả khi hệ thống đang chịu tải 1,000 RPS.
+
+> ⚠️ **Ghi chú về môi trường**: Toàn bộ số liệu trên được đo thực nghiệm trên môi trường Localhost (container Docker nội bộ). Khi triển khai thực tế trên VPS/Cloud, độ trễ sẽ cộng thêm độ trễ mạng Internet (Network RTT).
+
+---
+
+### 3. Kết Quả Kiểm Thử Khả Năng Chịu Lỗi (Chaos Engineering)
+
+1. **Sập Notification Service (Giao tiếp Hướng sự kiện Bất đồng bộ)**:
+   - **Mô phỏng**: Dừng cưỡng bức container `nexus-notification-service` (`docker stop`).
+   - **Kết quả**: Khách hàng vẫn đặt hàng và trừ kho bình thường; đơn hàng ở trạng thái `PENDING`. Sự kiện được lưu an toàn trong bảng Outbox và xếp hàng trong queue `notification.all.queue` của RabbitMQ.
+   - **Phục hồi**: Khởi động lại `nexus-notification-service`, service tự động kết nối lại RabbitMQ và tiêu thụ bù toàn bộ tin nhắn tồn đọng (hàng đợi về 0), không xảy ra thất thoát dữ liệu.
+
+2. **Sập Redis hoàn toàn (Cơ Chế Bảo Vệ Fail-Safe)**:
+   - **Mô phỏng**: Dừng cưỡng bức container `nexus-redis` (`docker stop`).
+   - **Bản chất kiến trúc**: Redis là thành phần phụ thuộc bắt buộc (**Hard Dependency**) của tầng đệm bảo vệ kho Flash Sale. Khi Redis sập, hệ thống chọn phương án **Từ chối an toàn (Fail-Safe với mã HTTP 409)** thay vì tiếp tục bán mù quáng vào PostgreSQL để tránh nghẽn cơ sở dữ liệu và nguy cơ bán âm.
+   - **Kết quả**: Tồn kho trong PostgreSQL được bảo toàn nguyên vẹn, không ghi nhận hiện tượng âm kho.
+   - **Phục hồi**: Khi khởi động lại Redis, hệ thống tự động phục hồi ngay lập tức, các đơn đặt hàng sau đó hoạt động trở lại bình thường mà không cần restart lại các microservices.
 
 ---
 
@@ -213,5 +239,5 @@ Dưới đây là bảng hướng dẫn nhanh các lệnh PowerShell để thự
 | **3. Kiểm tra bảo mật Idempotency & Cache SETNX** | `powershell -ExecutionPolicy Bypass -File ./scripts/test-hardened-logic.ps1` | Xóa key Redis + bắn 20 đơn song song; Kiểm tra chặn lộ dữ liệu người dùng (HTTP 409) và chặn đổi giỏ hàng (HTTP 422). |
 | **4. Kiểm thử khả năng chịu lỗi (Chaos Test)** | `powershell -ExecutionPolicy Bypass -File ./scripts/test-fault-tolerance.ps1` | Tắt Notification -> tạo đơn bình thường -> bật lại tiêu thụ bù; Tắt Redis -> bảo vệ DB không bị âm kho. |
 | **5. Test tải đồng thời Flash Sale (50 luồng)** | `powershell -ExecutionPolicy Bypass -File ./scripts/test-flash-sale.ps1` | Đặt kho = 10, bắn 50 luồng: Chính xác 10 đơn thành công, 40 đơn từ chối, kho cuối = 0, âm kho = 0. |
-| **6. Chạy k6 kiểm thử tải cao (1000 RPS)** | `powershell -ExecutionPolicy Bypass -File ./scripts/run-k6-docker.ps1` | Chạy k6 chính thức: 26,749 request, đỉnh 1000 RPS, thời gian phản hồi p50=1.23ms, p95=3.02ms. |
+| **6. Chạy k6 kiểm thử tải cao (1000 RPS)** | `powershell -ExecutionPolicy Bypass -File ./scripts/run-k6-docker.ps1` | Chạy k6 chính thức: 26,749 request, đỉnh 1000 RPS, thời gian phản hồi 100 đơn thành công p95=925ms, từ chối an toàn p95=4.14ms. |
 | **7. Dọn dẹp mã nguồn trước khi nộp đồ án** | `powershell -ExecutionPolicy Bypass -File ./scripts/clean-for-submission.ps1` | Xóa sạch các thư mục `target/` để file ZIP nhẹ, sạch và sẵn sàng nộp bài. |
