@@ -29,6 +29,7 @@ export const options = {
     // Tiêu chuẩn cam kết chất lượng (Quality Gates) khi báo cáo với Hội đồng
     'http_req_duration': ['p(95)<1500', 'p(99)<3000'], // 95% request phản hồi dưới 1.5s ngay cả khi tải 1000 RPS
     'rate_limit_hits': ['count==0'],                  // Không có request nào bị chặn nhầm bởi Rate Limiting
+    'successful_orders': ['count==100'],              // Đúng chính xác 100 đơn thành công (khớp tuyệt đối với 100 tồn kho đã nạp)
   },
 };
 
@@ -84,7 +85,7 @@ export default function (data) {
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${data.token}`,
-      'X-Forwarded-For': `10.0.0.${Math.floor(Math.random() * 254) + 1}`, // Kiểm tra khả năng chống giả mạo IP
+      'X-Forwarded-For': `10.0.0.${Math.floor(Math.random() * 254) + 1}`, // Giả lập dải IP khác nhau từ nhiều client đồng thời
     },
     timeout: '5s',
   };
@@ -95,10 +96,12 @@ export default function (data) {
 
   if (res.status === 201) {
     successfulOrders.add(1);
-    check(res, { 'Tạo đơn hàng thành công': (r) => r.status === 201 });
-  } else if (res.status === 409 || res.status === 400) {
+    check(res, { 'Tạo đơn hàng thành công (201 Created)': (r) => r.status === 201 });
+  } else if (res.status === 409) {
     soldOutRejections.add(1);
-    check(res, { 'Từ chối an toàn khi hết hàng': (r) => r.status === 409 || r.status === 400 });
+    check(res, { 'Từ chối an toàn khi hết hàng (409 Conflict)': (r) => r.status === 409 });
+  } else if (res.status === 400) {
+    check(res, { 'Lỗi Bad Request không mong muốn (400)': (r) => false });
   } else if (res.status === 429) {
     rateLimitHits.add(1);
     console.warn('Đã chạm giới hạn Rate Limit (Mã 429)! Cần tăng thêm giá trị RATE_LIMIT_MAX.');
@@ -112,6 +115,13 @@ export function teardown(data) {
   console.log('>>> [k6 Hoàn tất] Bài test tải kết thúc! Đang kiểm tra tồn kho thực tế trong cơ sở dữ liệu...');
   const invRes = http.get(`${BASE_URL}/api/v1/orders/inventory/1`);
   if (invRes.status === 200) {
-    console.log(`>>> [Tồn kho Sản phẩm #1 sau cùng]: Khả dụng=${invRes.json('availableStock')}, Đang giữ=${invRes.json('reservedStock')}`);
+    const available = invRes.json('availableStock');
+    const reserved = invRes.json('reservedStock');
+    console.log(`>>> [Tồn kho Sản phẩm #1 sau cùng]: Khả dụng=${available}, Đang giữ=${reserved}`);
+    if (available < 0) {
+      console.error(`❌ CẢNH BÁO NGUY HIỂM: ÂM KHO (OVERSOLD)! Tồn kho = ${available}`);
+    } else if (available === 0) {
+      console.log('✅ BẢO VỆ KHO THÀNH CÔNG TUYỆT ĐỐI: Đúng 100 đơn mua hết hàng, Tồn kho chạm 0 và KHÔNG BỊ ÂM KHO!');
+    }
   }
 }

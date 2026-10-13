@@ -142,6 +142,11 @@ public class OrderService {
         if (req.getItems() == null || req.getItems().isEmpty()) {
             throw new IllegalArgumentException("Đơn hàng phải có ít nhất 1 sản phẩm!");
         }
+        for (OrderItemRequest item : req.getItems()) {
+            if (item.getQuantity() == null || item.getQuantity() <= 0) {
+                throw new IllegalArgumentException("Số lượng sản phẩm #" + item.getProductId() + " phải lớn hơn 0!");
+            }
+        }
 
         // STEP 0: Idempotency Check - prevent double order creation and duplicate stock deductions
         if (req.getIdempotencyKey() != null && !req.getIdempotencyKey().isBlank()) {

@@ -171,11 +171,11 @@ public class OrderController {
                 "message", "Cập nhật trạng thái đơn hàng thành công!",
                 "data", updated
             ));
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of(
                 "code", 400,
                 "success", false,
-                "message", "Trạng thái '" + statusStr + "' không hợp lệ: " + e.getMessage()
+                "message", "Chuyển trạng thái '" + statusStr + "' không hợp lệ: " + e.getMessage()
             ));
         }
     }
@@ -238,11 +238,11 @@ public class OrderController {
             ));
         }
         Integer stock = body.get("stock");
-        if (stock == null) {
+        if (stock == null || stock < 0) {
             return ResponseEntity.badRequest().body(Map.of(
                 "code", 400,
                 "success", false,
-                "message", "Vui lòng truyền số lượng tồn kho hợp lệ (ví dụ: {\"stock\": 50})."
+                "message", "Vui lòng truyền số lượng tồn kho hợp lệ không âm (yêu cầu stock >= 0)."
             ));
         }
         com.omnichannel.order.entity.Inventory updated = orderService.updateInventoryStock(productId, stock);

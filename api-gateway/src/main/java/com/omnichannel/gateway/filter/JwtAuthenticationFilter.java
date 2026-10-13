@@ -130,7 +130,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         if (HttpMethod.GET.equals(method) && (path.startsWith("/api/v1/products") || path.startsWith("/api/v1/orders/inventory"))) {
             return true;
         }
-        if (path.startsWith("/actuator") || path.startsWith("/health") || path.equals("/favicon.ico")) {
+        if (path.startsWith("/actuator") || path.endsWith("/health") || path.contains("/health") || path.equals("/favicon.ico")) {
             return true;
         }
         return false;
