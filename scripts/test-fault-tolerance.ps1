@@ -1,4 +1,4 @@
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+﻿[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 # scripts/test-fault-tolerance.ps1
 # Kịch bản kiểm thử Khả năng Chịu lỗi & Tính Sẵn sàng cao của Hệ thống Microservices:
 # 1. Tách rời bất đồng bộ (Asynchronous Decoupling): Notification Service sập không làm tắc nghẽn luồng đặt hàng; tự động hồi phục qua hàng đợi RabbitMQ

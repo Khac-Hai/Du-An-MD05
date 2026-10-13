@@ -1,4 +1,4 @@
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+﻿[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 # scripts/verify-fixes.ps1
 # Kịch bản kiểm thử toàn diện 9 bài test kiến trúc Microservices & Bảo vệ đồ án
 $ErrorActionPreference = "Continue"
