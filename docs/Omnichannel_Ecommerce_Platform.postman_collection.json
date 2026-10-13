@@ -65,6 +65,11 @@
       "key": "stock_before_fail",
       "value": "0",
       "type": "string"
+    },
+    {
+      "key": "idem_first_order_id",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -1951,22 +1956,31 @@
                 "{{latest_order_id}}"
               ]
             },
-            "description": "LƯU Ý: Giao dịch thanh toán được tạo bất đồng bộ qua Outbox Publisher và RabbitMQ sau khi OrderCreatedEvent được phát. Nếu hệ thống đang tải hoặc vừa tạo xong đơn, có thể mất từ 0.5 - 2 giây để giao dịch xuất hiện."
+            "description": "LƯU Ý: Giao dịch thanh toán được tạo bất đồng bộ qua Outbox Publisher và RabbitMQ sau khi OrderCreatedEvent được phát. Script pre-request tự động chờ 1.5s để đảm bảo giao dịch đã sẵn sàng."
           },
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Chờ 1.5 giây để Outbox Publisher & RabbitMQ hoàn tất tạo giao dịch thanh toán bất đồng bộ",
+                  "setTimeout(function(){}, 1500);",
+                  "var start = new Date().getTime();",
+                  "while (new Date().getTime() < start + 1200);"
+                ],
+                "type": "text/javascript"
+              }
+            },
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status code is 200 OK (hoặc 400 nếu RabbitMQ chưa kịp tiêu thụ)', function () {",
-                  "    pm.expect(pm.response.code).to.be.oneOf([200, 400]);",
-                  "});",
-                  "if (pm.response.code === 200) {",
-                  "    var jsonData = pm.response.json();",
-                  "    pm.test('Giao dịch thanh toán ở trạng thái PENDING', function () {",
-                  "        pm.expect(jsonData.data.status).to.eql('PENDING');",
-                  "    });",
-                  "}"
+                  "pm.test('Status code is 200 OK', function () { pm.response.to.have.status(200); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Giao dịch thanh toán ở trạng thái PENDING', function () {",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "    pm.expect(jsonData.data.status).to.eql('PENDING');",
+                  "});"
                 ],
                 "type": "text/javascript"
               }
@@ -2041,6 +2055,18 @@
             }
           },
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Chờ 1.5 giây để PaymentCompletedEvent qua RabbitMQ được Order Service xử lý chuyển trạng thái sang CONFIRMED",
+                  "setTimeout(function(){}, 1500);",
+                  "var start = new Date().getTime();",
+                  "while (new Date().getTime() < start + 1200);"
+                ],
+                "type": "text/javascript"
+              }
+            },
             {
               "listen": "test",
               "script": {
@@ -2294,6 +2320,18 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Chờ 1.5 giây để PaymentFailedEvent qua RabbitMQ được Order Service xử lý hủy đơn sang CANCELLED và hoàn kho",
+                  "setTimeout(function(){}, 1500);",
+                  "var start = new Date().getTime();",
+                  "while (new Date().getTime() < start + 1200);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "exec": [
@@ -2326,6 +2364,18 @@
             }
           },
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Chờ kho được cập nhật hoàn trả trong DB sau Saga Compensation",
+                  "setTimeout(function(){}, 1000);",
+                  "var start = new Date().getTime();",
+                  "while (new Date().getTime() < start + 1000);"
+                ],
+                "type": "text/javascript"
+              }
+            },
             {
               "listen": "test",
               "script": {

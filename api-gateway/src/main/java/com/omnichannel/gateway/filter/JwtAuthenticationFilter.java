@@ -23,6 +23,7 @@ import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -30,6 +31,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+
+    private static final Set<String> HEALTH_PATHS = Set.of(
+            "/api/v1/auth/health",
+            "/api/v1/products/health",
+            "/api/v1/orders/health",
+            "/api/v1/payments/health",
+            "/api/v1/notifications/health"
+    );
 
     @Value("${jwt.secret:omnichannel-ecommerce-microservices-super-secure-secret-key-2026-very-long-key-32bytes}")
     private String jwtSecret;
@@ -130,7 +139,10 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         if (HttpMethod.GET.equals(method) && (path.startsWith("/api/v1/products") || path.startsWith("/api/v1/orders/inventory"))) {
             return true;
         }
-        if (path.startsWith("/actuator") || path.endsWith("/health") || path.contains("/health") || path.equals("/favicon.ico")) {
+        if (HttpMethod.GET.equals(method) && HEALTH_PATHS.contains(path)) {
+            return true;
+        }
+        if (path.startsWith("/actuator") || path.equals("/favicon.ico")) {
             return true;
         }
         return false;

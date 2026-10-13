@@ -20,12 +20,13 @@ collection = {
         {"key": "latest_order_number", "value": "ORD-SAMPLE", "type": "string"},
         {"key": "fail_order_id", "value": "", "type": "string"},
         {"key": "fail_order_number", "value": "", "type": "string"},
-        {"key": "stock_before_fail", "value": "0", "type": "string"}
+        {"key": "stock_before_fail", "value": "0", "type": "string"},
+        {"key": "idem_first_order_id", "value": "", "type": "string"}
     ],
     "item": []
 }
 
-def make_req(name, method, url_raw, headers=None, body_json=None, tests=None, description=""):
+def make_req(name, method, url_raw, headers=None, body_json=None, tests=None, description="", prerequest=None):
     item = {
         "name": name,
         "request": {
@@ -72,16 +73,24 @@ def make_req(name, method, url_raw, headers=None, body_json=None, tests=None, de
         if not any(h["key"].lower() == "content-type" for h in item["request"]["header"]):
             item["request"]["header"].append({"key": "Content-Type", "value": "application/json"})
 
-    if tests:
-        item["event"] = [
-            {
+    if tests or prerequest:
+        item["event"] = []
+        if prerequest:
+            item["event"].append({
+                "listen": "prerequest",
+                "script": {
+                    "exec": prerequest,
+                    "type": "text/javascript"
+                }
+            })
+        if tests:
+            item["event"].append({
                 "listen": "test",
                 "script": {
                     "exec": tests,
                     "type": "text/javascript"
                 }
-            }
-        ]
+            })
     return item
 
 # -------------------------------------------------------------
@@ -852,17 +861,20 @@ mod5 = {
             "GET",
             "{{baseUrl}}/payments/order/{{latest_order_id}}",
             headers={"Authorization": "Bearer {{customer_token}}"},
-            description="LƯU Ý: Giao dịch thanh toán được tạo bất đồng bộ qua Outbox Publisher và RabbitMQ sau khi OrderCreatedEvent được phát. Nếu hệ thống đang tải hoặc vừa tạo xong đơn, có thể mất từ 0.5 - 2 giây để giao dịch xuất hiện.",
+            description="LƯU Ý: Giao dịch thanh toán được tạo bất đồng bộ qua Outbox Publisher và RabbitMQ sau khi OrderCreatedEvent được phát. Script pre-request tự động chờ 1.5s để đảm bảo giao dịch đã sẵn sàng.",
+            prerequest=[
+                "// Chờ 1.5 giây để Outbox Publisher & RabbitMQ hoàn tất tạo giao dịch thanh toán bất đồng bộ",
+                "setTimeout(function(){}, 1500);",
+                "var start = new Date().getTime();",
+                "while (new Date().getTime() < start + 1200);"
+            ],
             tests=[
-                "pm.test('Status code is 200 OK (hoặc 400 nếu RabbitMQ chưa kịp tiêu thụ)', function () {",
-                "    pm.expect(pm.response.code).to.be.oneOf([200, 400]);",
-                "});",
-                "if (pm.response.code === 200) {",
-                "    var jsonData = pm.response.json();",
-                "    pm.test('Giao dịch thanh toán ở trạng thái PENDING', function () {",
-                "        pm.expect(jsonData.data.status).to.eql('PENDING');",
-                "    });",
-                "}"
+                "pm.test('Status code is 200 OK', function () { pm.response.to.have.status(200); });",
+                "var jsonData = pm.response.json();",
+                "pm.test('Giao dịch thanh toán ở trạng thái PENDING', function () {",
+                "    pm.expect(jsonData.success).to.eql(true);",
+                "    pm.expect(jsonData.data.status).to.eql('PENDING');",
+                "});"
             ]
         ),
         make_req(
@@ -888,6 +900,12 @@ mod5 = {
             "GET",
             "{{baseUrl}}/orders/{{latest_order_id}}",
             headers={"Authorization": "Bearer {{customer_token}}"},
+            prerequest=[
+                "// Chờ 1.5 giây để PaymentCompletedEvent qua RabbitMQ được Order Service xử lý chuyển trạng thái sang CONFIRMED",
+                "setTimeout(function(){}, 1500);",
+                "var start = new Date().getTime();",
+                "while (new Date().getTime() < start + 1200);"
+            ],
             tests=[
                 "pm.test('Status code is 200 OK', function () { pm.response.to.have.status(200); });",
                 "var jsonData = pm.response.json();",
@@ -981,6 +999,12 @@ mod5 = {
             "GET",
             "{{baseUrl}}/orders/{{fail_order_id}}",
             headers={"Authorization": "Bearer {{customer_token}}"},
+            prerequest=[
+                "// Chờ 1.5 giây để PaymentFailedEvent qua RabbitMQ được Order Service xử lý hủy đơn sang CANCELLED và hoàn kho",
+                "setTimeout(function(){}, 1500);",
+                "var start = new Date().getTime();",
+                "while (new Date().getTime() < start + 1200);"
+            ],
             tests=[
                 "pm.test('Status code is 200 OK', function () { pm.response.to.have.status(200); });",
                 "var jsonData = pm.response.json();",
@@ -993,6 +1017,12 @@ mod5 = {
             "5.9 Xác Thực Saga Compensation: Kho Hàng Được Hoàn Trả Đầy Đủ",
             "GET",
             "{{baseUrl}}/orders/inventory/1",
+            prerequest=[
+                "// Chờ kho được cập nhật hoàn trả trong DB sau Saga Compensation",
+                "setTimeout(function(){}, 1000);",
+                "var start = new Date().getTime();",
+                "while (new Date().getTime() < start + 1000);"
+            ],
             tests=[
                 "pm.test('Status code is 200 OK', function () { pm.response.to.have.status(200); });",
                 "var jsonData = pm.response.json();",
@@ -1274,6 +1304,12 @@ environment = {
         {
             "key": "stock_before_fail",
             "value": "0",
+            "type": "default",
+            "enabled": True
+        },
+        {
+            "key": "idem_first_order_id",
+            "value": "",
             "type": "default",
             "enabled": True
         }
